@@ -100,7 +100,10 @@ def readDataCSV(CSV_FILE_IN):
 # ---------------------------------------------------
 if __name__ == "__main__":
     resultData = []
+    # Uncomment this like to use a `input.csv` file 
     # data = readDataCSV(CSV_FILE_IN)
+    #
+    # this line is used for debugging purposes
     data = ['jack@advantechcap.com']
     for email in data:
         match = re.match(r'^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$', email)
