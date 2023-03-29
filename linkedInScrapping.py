@@ -15,7 +15,7 @@ load_dotenv()
 # ---------------------------------------------------
 # Global Variables
 # ---------------------------------------------------
-CSV_COLUMNS = ['Email', 'LinkedIn', 'More']
+CSV_COLUMNS = ['Email', 'Data']
 API_KEY = os.getenv('GOOGLE_API_KEY')
 SEARCH_ENGINE_ID = os.getenv('SEARCH_ENGINE_ID')
 CSV_FILE_IN = "input.csv"
@@ -35,20 +35,34 @@ def fetchProfile(username:str, company = ""):
     
     response = requests.get(api_url).json()
     links = []
-    
-    print(response['searchInformation'])
+    # print(response['queries']['request'][0]['searchTerms'])
     if 'items' in response:
         for item in response['items']:
             if '/in/' in item['formattedUrl']:
-                if company in item['pagemap']['metatags'][0]['og:title']:
-                    print(item['pagemap']['metatags'][0]['og:title'])
-                    links.append(item['formattedUrl'])     
+                title = item['pagemap']['metatags'][0]['og:title'].lower()
+                snippet = item['snippet'].lower()
+                if company in title or company in snippet:
+                    links.append({
+                        "url": item['formattedUrl'],
+                        "title": item['pagemap']['metatags'][0]['og:title'],
+                        "firstName": item['pagemap']['metatags'][0]['profile:first_name'],
+                        "lastName": item['pagemap']['metatags'][0]['profile:last_name']
+                    })
+                    break  
             elif '/company/' in item['formattedUrl']:
-                links.append(item['formattedUrl'])
+                title = item['pagemap']['metatags'][0]['og:title'].lower()
+                snippet = item['snippet'].lower()
+                if company in title or company in snippet:
+                    links.append({
+                        "url": item['formattedUrl'],
+                        "title": item['pagemap']['metatags'][0]['og:title'],
+                    })
+                    break
             else:
                 continue
     elif 'spelling' in response:
-        links = fetchProfile(response['spelling']['correctedQuery'])
+        newQuery = response['spelling']['correctedQuery']
+        links = fetchProfile(" ".join(newQuery.split(" ")[:-1]))
 
     return links
     
@@ -101,22 +115,23 @@ def readDataCSV(CSV_FILE_IN):
 if __name__ == "__main__":
     resultData = []
     # Uncomment this like to use a `input.csv` file 
-    # data = readDataCSV(CSV_FILE_IN)
+    data = readDataCSV(CSV_FILE_IN)
     #
     # this line is used for debugging purposes
-    data = ['jack@advantechcap.com']
+    # data = ['ali_jafari@yvr.ca']
     for email in data:
         match = re.match(r'^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$', email)
         if match:
             username = match.group(1)
             company = match.group(2)
+            username.replace(".", " ").replace("_", " ")
             if company in PERSONAL_PREFIX:
                 links = links = fetchProfile(username)
             else:
                 links = links = fetchProfile(username, company)
             resultData.append({
                 'Email': email,
-                'LinkedIn': links,
+                'Data': links,
             })
-    print(resultData)
-    # writeDataCSV(resultData)
+    # print(resultData)
+    writeDataCSV(resultData)
