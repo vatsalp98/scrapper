@@ -2,10 +2,11 @@
 
 ## Replacing the API key and Search Engine ID
 
-Get your API_KEY of a google cloud project from here
+1- Get your API_KEY of a google cloud project from here
 - [Google Cloud API Key](https://console.cloud.google.com/apis/credentials)
  - [Custom Google Search Engine ID](https://programmablesearchengine.google.com/controlpanel/all)
 
+2- Create a `.env` file following the template from `.env.example` and replace the credentials appropriately.
 
 ## Required Packages
 
