@@ -33,36 +33,42 @@ def fetchProfile(username:str, company = ""):
     query = username if len(company) == 0 else f'{username} {company}'
     api_url = "https://www.googleapis.com/customsearch/v1?key={}&cx={}&q={}&num=10".format(API_KEY, SEARCH_ENGINE_ID, query)
     
-    response = requests.get(api_url).json()
+    try:
+        response = requests.get(api_url).json()
+    except requests.exceptions.RequestException:
+        return []
+    
     links = []
     # print(response['queries']['request'][0]['searchTerms'])
     if 'items' in response:
         for item in response['items']:
-            if '/in/' in item['formattedUrl']:
-                title = item['pagemap']['metatags'][0]['og:title'].lower()
-                snippet = item['snippet'].lower()
+            formatted_url = item['formattedUrl']
+            title = item['title'].lower()
+            snippet = item['snippet'].lower()
+
+            if '/in/' in formatted_url:
+                first_name = item['pagemap']['metatags'][0]['profile:first_name']
+                last_name = item['pagemap']['metatags'][0]['profile:last_name']
                 if company in title or company in snippet:
                     links.append({
-                        "url": item['formattedUrl'],
-                        "title": item['pagemap']['metatags'][0]['og:title'],
-                        "firstName": item['pagemap']['metatags'][0]['profile:first_name'],
-                        "lastName": item['pagemap']['metatags'][0]['profile:last_name']
+                        "url": formatted_url,
+                        "title": title,
+                        "firstName": first_name,
+                        "lastName": last_name
                     })
                     break  
-            elif '/company/' in item['formattedUrl']:
-                title = item['pagemap']['metatags'][0]['og:title'].lower()
-                snippet = item['snippet'].lower()
+            elif '/company/' in formatted_url:
                 if company in title or company in snippet:
                     links.append({
-                        "url": item['formattedUrl'],
-                        "title": item['pagemap']['metatags'][0]['og:title'],
+                        "url": formatted_url,
+                        "title": title,
                     })
                     break
             else:
                 continue
     elif 'spelling' in response:
-        newQuery = response['spelling']['correctedQuery']
-        links = fetchProfile(" ".join(newQuery.split(" ")[:-1]))
+        new_query = response['spelling']['correctedQuery']
+        links = fetchProfile(" ".join(new_query.split(" ")[:-1]))
 
     return links
     
