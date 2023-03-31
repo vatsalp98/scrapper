@@ -9,8 +9,8 @@
  */
 function LINKEDINPROFILE(query, company, index = 1) {
 
-    const apiKey = "AIzaSyBAgf5oD06BSzMbHZfPTogp-eTUzHl_wW0";
-    const searchEngineId = "f216820fe1cd44300";
+    const apiKey = "API_KEY";
+    const searchEngineId = "SEARCH_ENGINE_ID";
   
     const urlQuery =
       `https://www.googleapis.com/customsearch/v1?key={{apiKey}}&cx={{searchEngineId}}&q={{query}}&num=10`;
