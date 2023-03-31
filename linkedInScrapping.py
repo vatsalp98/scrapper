@@ -132,9 +132,9 @@ if __name__ == "__main__":
             company = match.group(2)
             username.replace(".", " ").replace("_", " ")
             if company in PERSONAL_PREFIX:
-                links = links = fetchProfile(username)
+                links = fetchProfile(username)
             else:
-                links = links = fetchProfile(username, company)
+                links = fetchProfile(username, company)
             resultData.append({
                 'Email': email,
                 'Data': links,
