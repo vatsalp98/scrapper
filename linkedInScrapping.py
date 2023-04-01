@@ -38,6 +38,7 @@ def fetchProfile(username:str, company = ""):
     except requests.exceptions.RequestException:
         return []
     
+    print(response)
     links = []
     # print(response['queries']['request'][0]['searchTerms'])
     if 'items' in response:
@@ -45,18 +46,26 @@ def fetchProfile(username:str, company = ""):
             formatted_url = item['formattedUrl']
             title = item['title'].lower()
             snippet = item['snippet'].lower()
-
+            
             if '/in/' in formatted_url:
                 first_name = item['pagemap']['metatags'][0]['profile:first_name']
                 last_name = item['pagemap']['metatags'][0]['profile:last_name']
-                if company in title or company in snippet:
+                if company in title or company in snippet or username in title or username in snippet:
                     links.append({
                         "url": formatted_url,
                         "title": title,
                         "firstName": first_name,
                         "lastName": last_name
                     })
-                    break  
+                    break
+                elif len(company) == 3 and 'airport' in title or 'airport' in snippet:
+                    links.append({
+                        "url": formatted_url,
+                        "title": title,
+                        "firstName": first_name,
+                        "lastName": last_name
+                    })
+                    break
             elif '/company/' in formatted_url:
                 if company in title or company in snippet:
                     links.append({
@@ -121,16 +130,17 @@ def readDataCSV(CSV_FILE_IN):
 if __name__ == "__main__":
     resultData = []
     # Uncomment this like to use a `input.csv` file 
-    data = readDataCSV(CSV_FILE_IN)
+    # data = readDataCSV(CSV_FILE_IN)
     #
     # this line is used for debugging purposes
-    # data = ['ali_jafari@yvr.ca']
+    data = ['sarah.derham@gov.bc.ca']
     for email in data:
         match = re.match(r'^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$', email)
         if match:
             username = match.group(1)
             company = match.group(2)
-            username.replace(".", " ").replace("_", " ")
+            username = username.replace(".", " ").replace("_", " ")
+            company = company.replace(".", " ").replace("_", " ")
             if company in PERSONAL_PREFIX:
                 links = fetchProfile(username)
             else:
@@ -139,5 +149,5 @@ if __name__ == "__main__":
                 'Email': email,
                 'Data': links,
             })
-    # print(resultData)
-    writeDataCSV(resultData)
+    # writeDataCSV(resultData)
+    print(resultData)
