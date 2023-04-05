@@ -38,7 +38,7 @@ def fetchProfile(username:str, company = ""):
     except requests.exceptions.RequestException:
         return []
     
-    print(response)
+    # print(response)
     links = []
     # print(response['queries']['request'][0]['searchTerms'])
     if 'items' in response:
@@ -48,9 +48,9 @@ def fetchProfile(username:str, company = ""):
             snippet = item['snippet'].lower()
             
             if '/in/' in formatted_url:
-                first_name = item['pagemap']['metatags'][0]['profile:first_name']
-                last_name = item['pagemap']['metatags'][0]['profile:last_name']
-                if company in title or company in snippet or username in title or username in snippet:
+                first_name = item['pagemap']['metatags'][0]['profile:first_name'].lower()
+                last_name = item['pagemap']['metatags'][0]['profile:last_name'].lower()
+                if company in title or company in snippet or first_name in title or first_name in snippet:
                     links.append({
                         "url": formatted_url,
                         "title": title,
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     # data = readDataCSV(CSV_FILE_IN)
     #
     # this line is used for debugging purposes
-    data = ['sarah.derham@gov.bc.ca']
+    data = ['kam.osgoei@agroalternative.com']
     for email in data:
         match = re.match(r'^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$', email)
         if match:
