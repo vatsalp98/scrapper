@@ -110,33 +110,58 @@ def fetchProfile(query:str, email:str):
         response = requests.get(api_url).json()
     except requests.exceptions.RequestException:
         return []
+    print(query)
     links = []
-    if 'items' in response:
-        for item in response['items']:
-            formatted_url = item['formattedUrl']
-            title = item['title'].lower()
-            snippet = item['snippet'].lower()
-            if '/in/' in formatted_url:
-                first_name = item['pagemap']['metatags'][0]['profile:first_name'].lower()
-                last_name = item['pagemap']['metatags'][0]['profile:last_name'].lower()
-                description = item['pagemap']['metatags'][0]['og:description'].lower()
-                score = fuzz.partial_token_sort_ratio(query, title + description)
-                links.append({
-                    "firstName": first_name,
-                    "lastName": last_name,
-                    "url": formatted_url,
-                    "email": email,
-                    "accuracy": score 
-                })
+    if int(response['searchInformation']['totalResults']) > 0:
+        if 'items' in response:
+            for item in response['items']:
+                formatted_url = item['formattedUrl']
+                title = item['title'].lower()
+                snippet = item['snippet'].lower()
+                if '/in/' in formatted_url:
+                    first_name = item['pagemap']['metatags'][0]['profile:first_name'].lower()
+                    last_name = item['pagemap']['metatags'][0]['profile:last_name'].lower()
+                    description = item['pagemap']['metatags'][0]['og:description'].lower()
+                    score = fuzz.partial_token_sort_ratio(query, title + description)
+                    links.append({
+                        "firstName": first_name,
+                        "lastName": last_name,
+                        "url": formatted_url,
+                        "email": email,
+                        "fuzzyAccuracy": score 
+                    })
+            max_item = max(links, key=lambda x: x['fuzzyAccuracy'])
+        return max_item
+    else:
+        return {
+            "firstName": first_name,
+            "lastName": last_name,
+            "url": "NOT FOUND",
+            "email": email,
+            "fuzzyAccuracy": "N/A"
+        }
+
+def getUrlCount(data:list):
+    url_counts = {}
+
+    # Loop through each dictionary in the data list
+    for d in data:
+        url = d['url']
+        if url in url_counts:
+            url_counts[url] += 1
+        else:
+            url_counts[url] = 1
     
-    max_item = max(links, key=lambda x: x['accuracy'])
-    return max_item
+    highest_count_item = max(data, key=lambda d: url_counts[d['url']])
+    highest_count_item['count'] = url_counts[highest_count_item['url']]
+    return highest_count_item
+
 
 if __name__ == "__main__":
     """
         Global Variables
     """ 
-    CSV_COLUMNS = ['firstName', 'lastName', 'url','email', 'accuracy']
+    CSV_COLUMNS = ['firstName', 'lastName', 'url','email', 'fuzzyAccuracy', 'count']
     COMMONS = ["gmail", "hotmail", "outlook", "yahoo"]
     API_KEY = os.getenv('GOOGLE_API_KEY')
     SEARCH_ENGINE_ID = os.getenv('SEARCH_ENGINE_ID')
@@ -156,20 +181,50 @@ if __name__ == "__main__":
             company = match.group(3)
             company = extractCompany(match.group(3)) if len(company) > 8 else match.group(3)
             
-            queries = [first_name, last_name, company]
-            permutations = list(itertools.permutations(queries))
-            
-            for p in permutations:
-                query = ' '.join(p)
-                result = fetchProfile(query=query, email=email)
-                temp_data.append(result)
-                
+            # queries = [first_name, last_name, company, email]
+            for x in range(4):
+                match x:
+                    case 0:
+                        query = f'{first_name} {last_name} {company}'
+                        result = fetchProfile(query=query, email=email)
+                        temp_data.append(result)
+                    case 1:
+                        query = f'{first_name} {company}'
+                        result = fetchProfile(query=query, email=email)
+                        temp_data.append(result)
+                    case 2:
+                        query = f'{last_name} {company}'
+                        result = fetchProfile(query=query, email=email)
+                        temp_data.append(result)
+                    case 3:
+                        query = f'{first_name} {last_name}'
+                        result = fetchProfile(query=query, email=email)
+                        temp_data.append(result)
+                    # case 4:
+                    #     query = f'{first_name} {last_name} {email}'
+                    #     result = fetchProfile(query=query, email=email)
+                    #     temp_data.append(result)
+                    # case 5:
+                    #     query = f'{last_name} {company} {email}'
+                    #     result = fetchProfile(query=query, email=email)
+                    #     temp_data.append(result)
+                    # case 6:
+                    #     query = f'{last_name} {email}'
+                    #     result = fetchProfile(query=query, email=email)
+                    #     temp_data.append(result)
+                    # case 7:
+                    #     query = f'{company} {email}'
+                    #     result = fetchProfile(query=query, email=email)
+                    #     temp_data.append(result)
+                    # case 8:
+                    #     query = f'{email}'
+                    #     result = fetchProfile(query=query, email=email)
+                    #     temp_data.append(result)
+        final_data.append(getUrlCount(temp_data))
+        # same_url = all(item['url'] == temp_data[0]['url'] for item in temp_data)
         
-        same_url = all(item['url'] == temp_data[0]['url'] for item in temp_data)
-        
-        if same_url:
-            final_data.append(temp_data[0])
-
+        # if same_url:
+            # final_data.append(temp_data[0])
     writeDataCSV(final_data)
             
 
