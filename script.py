@@ -8,7 +8,7 @@ from fuzzywuzzy import fuzz
 import itertools
 
 load_dotenv()
-words = set(nltk.corpus.words.words() + ["hydra", "ideon", "misty"])
+words = set(nltk.corpus.words.words() + ["hydra", "ideon", "misty", "evok", "arix-tech", "platform88"])
 word_lengths = set(len(w) for w in words)
 
 def extractCompany(company:str):
@@ -110,7 +110,7 @@ def fetchProfile(query:str, email:str):
         response = requests.get(api_url).json()
     except requests.exceptions.RequestException:
         return []
-    print(query)
+    
     links = []
     if int(response['searchInformation']['totalResults']) > 0:
         if 'items' in response:
@@ -126,18 +126,29 @@ def fetchProfile(query:str, email:str):
                     links.append({
                         "firstName": first_name,
                         "lastName": last_name,
-                        "url": formatted_url,
                         "email": email,
+                        "url": formatted_url,
                         "fuzzyAccuracy": score 
                     })
+            
+            
+        if len(links) > 0:
             max_item = max(links, key=lambda x: x['fuzzyAccuracy'])
-        return max_item
+            return max_item
+        else:
+            return {
+                "firstName": query.split(" ")[0],
+                "lastName": query.split(" ")[1],
+                "email": email,
+                "url": "NOT FOUND",
+                "fuzzyAccuracy": "N/A"
+            }
     else:
         return {
-            "firstName": first_name,
-            "lastName": last_name,
-            "url": "NOT FOUND",
+            "firstName": query.split(" ")[0],
+            "lastName": query.split(" ")[1],
             "email": email,
+            "url": "NOT FOUND",
             "fuzzyAccuracy": "N/A"
         }
 
@@ -152,16 +163,17 @@ def getUrlCount(data:list):
         else:
             url_counts[url] = 1
     
-    highest_count_item = max(data, key=lambda d: url_counts[d['url']])
-    highest_count_item['count'] = url_counts[highest_count_item['url']]
-    return highest_count_item
+    # highest_count_item = max(data, key=lambda d: url_counts[d['url']])
+    # highest_count_item['count'] = url_counts[highest_count_item['url']]
+
+    return url_counts
 
 
 if __name__ == "__main__":
     """
         Global Variables
     """ 
-    CSV_COLUMNS = ['firstName', 'lastName', 'url','email', 'fuzzyAccuracy', 'count']
+    CSV_COLUMNS = ['firstName', 'lastName','email','url', 'fuzzyAccuracy', 'count']
     COMMONS = ["gmail", "hotmail", "outlook", "yahoo"]
     API_KEY = os.getenv('GOOGLE_API_KEY')
     SEARCH_ENGINE_ID = os.getenv('SEARCH_ENGINE_ID')
@@ -200,32 +212,11 @@ if __name__ == "__main__":
                         query = f'{first_name} {last_name}'
                         result = fetchProfile(query=query, email=email)
                         temp_data.append(result)
-                    # case 4:
-                    #     query = f'{first_name} {last_name} {email}'
-                    #     result = fetchProfile(query=query, email=email)
-                    #     temp_data.append(result)
-                    # case 5:
-                    #     query = f'{last_name} {company} {email}'
-                    #     result = fetchProfile(query=query, email=email)
-                    #     temp_data.append(result)
-                    # case 6:
-                    #     query = f'{last_name} {email}'
-                    #     result = fetchProfile(query=query, email=email)
-                    #     temp_data.append(result)
-                    # case 7:
-                    #     query = f'{company} {email}'
-                    #     result = fetchProfile(query=query, email=email)
-                    #     temp_data.append(result)
-                    # case 8:
-                    #     query = f'{email}'
-                    #     result = fetchProfile(query=query, email=email)
-                    #     temp_data.append(result)
+
         final_data.append(getUrlCount(temp_data))
-        # same_url = all(item['url'] == temp_data[0]['url'] for item in temp_data)
-        
-        # if same_url:
-            # final_data.append(temp_data[0])
-    writeDataCSV(final_data)
+    print(temp_data)
+    # print(final_data)
+    # writeDataCSV(final_data)
             
 
 # Search Combinations
