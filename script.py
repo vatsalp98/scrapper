@@ -5,8 +5,8 @@ import re
 
 CSV_COLUMNS = ['Email', 'Data']
 PERSONAL_PREFIX = ['gmail', 'hotmail', 'yahoo']
-API_KEY = 'AIzaSyA31UZKdSo-5PKef5aSzrJPEsAYk8gcg2M'
-SEARCH_ENGINE_ID = '32f5c72abc9ec46da'
+API_KEY = 'API_KEY'
+SEARCH_ENGINE_ID = 'SEARCH_ENGINE'
 
 # words = set(nltk.corpus.words.words() + ["hydra", "ideon", "misty", "evok", "arix-tech", "platform88"])
 # word_lengths = set(len(w) for w in words)
