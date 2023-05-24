@@ -1,141 +1,121 @@
-import json
 import requests
 from fuzzywuzzy import fuzz
-import re
+import csv
 
 CSV_COLUMNS = ['Email', 'Data']
 PERSONAL_PREFIX = ['gmail', 'hotmail', 'yahoo']
-API_KEY = 'API_KEY'
-SEARCH_ENGINE_ID = 'SEARCH_ENGINE'
+API_KEY = 'AIzaSyA31UZKdSo-5PKef5aSzrJPEsAYk8gcg2M'
+SEARCH_ENGINE_ID = '32f5c72abc9ec46da'
 
-# words = set(nltk.corpus.words.words() + ["hydra", "ideon", "misty", "evok", "arix-tech", "platform88"])
-# word_lengths = set(len(w) for w in words)
+def read_data_csv(csv_file:str):
+    """
+        Helps read data from a given CSV File and returns the data as a List
 
-# def extractCompany(company:str):
-#     """
-#         Function to extract the company name from matching to the longest matching english words.
+        - input: csv_file:str name of the csv file to read from
+        - output: List of rows in the csv file
+    """
+    with open(csv_file, mode="r", encoding="utf-8") as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        rows = [row for row in csv_reader]
+    return rows
 
-#         Input: 
-#             - Company name from the work email of the queried user
+def write_data_csv(csv_file:str, rows:list):
+    """
+        Helps write data to a specific csv file
 
-#         Output:
-#             - Most probable name of the company split appropriately
-#     """
-#     segmented_words = []
-#     i = 0
-#     while i < len(company):
-#         j = min(len(company), i + max(word_lengths))
-#         while j > i:
-#             if company[i:j] in words:
-#                 segmented_words.append(company[i:j])
-#                 i = j
-#                 break
-#             j -= 1
-#         else:
-#             segmented_words.append(company[i])
-#             i += 1
+        - input: 
+            - csv_file: str name of the output csv file
+            - rows: List of the data to be written to the CSV File
+        - output:
+            - CSV: File created in the root directory
+    """
+    fieldnames = ['firstName', 'lastName', 'email', 'url', 'fuzzyAccuracy']
+    with open(csv_file, mode="w", newline='', encoding="utf-8") as csv_file:
+        csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        csv_writer.writeheader()
+        csv_writer.writerows(rows)
 
-#     # Print the segmented words
-#     return ' '.join(segmented_words)
+def calculate_fuzzy_accuracy(query: str, title: str, description: str, first_name: str, last_name: str, given_first_name: str, given_last_name: str) -> float:
+    """
+        Calculate the fuzzy Accuracy score between the found results and the given queries
+    """
+    title_description_score = fuzz.partial_token_sort_ratio(query, title + description)
+    first_name_score = fuzz.partial_token_sort_ratio(given_first_name, first_name)
+    last_name_score = fuzz.partial_token_sort_ratio(given_last_name, last_name)
+    return (title_description_score + first_name_score + last_name_score) / 3
 
-
-def fetchProfile(query:str, email:str):
+def fetchProfile(query:str, email:str, d_first_name: str, d_last_name:str):
     api_url = "https://www.googleapis.com/customsearch/v1?key={}&cx={}&q={}&num=10".format(API_KEY, SEARCH_ENGINE_ID, query)
     try:
         response = requests.get(api_url).json()
     except requests.exceptions.RequestException:
         return []
     
-    links = []
-    # print(response['queries']['request'][0]['searchTerms'])
-    if int(response['searchInformation']['totalResults']) > 0:
-        if 'items' in response:
-            for item in response['items']:
-                formatted_url = item['formattedUrl']
-                title = item['title'].lower()
-                snippet = item['snippet'].lower()
-                if '/in/' in formatted_url:
-                    first_name = item['pagemap']['metatags'][0]['profile:first_name'].lower()
-                    last_name = item['pagemap']['metatags'][0]['profile:last_name'].lower()
-                    description = item['pagemap']['metatags'][0]['og:description'].lower()
-                    score = fuzz.partial_token_sort_ratio(query, title + description)
-                    score1 = fuzz.partial_token_sort_ratio(query, first_name)
-                    score2 = fuzz.partial_token_sort_ratio(query, last_name)
-                    links.append({
-                        "firstName": first_name,
-                        "lastName": last_name,
-                        "email": email,
-                        "url": formatted_url,
-                        "fuzzyAccuracy": ((score + score1 + score2) / 3),
-                    })
-                    
-        if len(links) > 0:
-            max_item = max(links, key=lambda x: x['fuzzyAccuracy'])
-            return max_item
-        else:
-            return {
-                "firstName": query,
-                "lastName": query,
-                "email": email,
-                "url": "NOT FOUND",
-                "fuzzyAccuracy": "N/A"
-            }
-    else:
+    if int(response['searchInformation']['totalResults']) == 0:
         return {
-            "firstName": query,
-            "lastName": query,
+            "firstName": d_first_name,
+            "lastName": d_last_name,
             "email": email,
             "url": "NOT FOUND",
-            "fuzzyAccuracy": "N/A"
+            "fuzzyAccuracy": 0.00
         }
+    
+    links = []
+    for item in response['items']:
+        formatted_url = item['formattedUrl']
+        title = item['title'].lower()
+        # Snippet not Used for now
+        # snippet = item['snippet'].lower()
+        if '/in/' in formatted_url:
+            first_name = item['pagemap']['metatags'][0]['profile:first_name'].lower()
+            last_name = item['pagemap']['metatags'][0]['profile:last_name'].lower()
+            description = item['pagemap']['metatags'][0]['og:description'].lower()
+            score = calculate_fuzzy_accuracy(query=query, description=description, title=title, first_name=first_name, last_name=last_name, given_first_name=d_first_name, given_last_name=d_last_name)
+            links.append({
+                "firstName": first_name,
+                "lastName": last_name,
+                "email": email,
+                "url": formatted_url,
+                "fuzzyAccuracy": score,
+            })
+    
+    max_item = {
+        "firstName": d_first_name,
+        "lastName": d_last_name,
+        "email": email,
+        "url": "NOT FOUND",
+        "fuzzyAccuracy": 0.00
+    } if len(links) == 0 else max(links, key=lambda x: x['fuzzyAccuracy'])
+    return max_item
 
-def lambda_handler(event, context):
+def main():
+    CSV_FILE = 'newInput.csv'
+    CSV_OUT = 'alpha.csv'
     result = []
-    
-    email = event['queryStringParameters']['email']
-    first_name = event['queryStringParameters']['firstName']
-    last_name = event['queryStringParameters']['lastName']
-    version = event['queryStringParameters']['version']
-    companyDomain = event['queryStringParameters']['company']
-    # match = re.match(r'^([\w\.\-]+)@([\w\-]+\.)?([\w\-]+)\.[\w\-]+$', email)
-    if version == "5":
-        print("version 5")
-        query = f'{first_name} {last_name} {companyDomain}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "6":
-        print("version 6")
-        query = f'{email}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "1":
-        print("version 1")
-        query = f'{first_name} {last_name} {companyDomain}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "2":
-        print("version 2")
-        query = f'{first_name} {companyDomain}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "3":
-        print("version 3")
-        query = f'{last_name} {companyDomain}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "4" :
-        print("version 4")
-        query = f'{first_name} {last_name}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    elif version == "7":
-        print("version 7")
-        query = f'{last_name} {email.split("@")[1]}'
-        links = fetchProfile(query=query, email=email)
-        result.append(links)
-    
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps(result)
-    }
+    data = read_data_csv(CSV_FILE)
+    # print(data)
+    for item in data:
+        email = item['email']
+        first_name = item['firstName']
+        last_name = item['lastName']
+
+        print("version alpha")
+
+        query1 = f'{last_name}@{email.split("@")[1]}'
+        links = fetchProfile(query=query1, email=email, d_first_name=first_name, d_last_name=last_name)
+            
+        query2 = f'{first_name}@{email.split("@")[1]}'
+        links2 = fetchProfile(query=query2, email=email, d_first_name=first_name, d_last_name=last_name)
+        
+        if links['url'] == links2['url']:
+            print('MATCHED')
+            result.append(links)
+        else:
+            print("NOT MATCHED")
+            max_item = max([links, links2], key=lambda x: x['fuzzyAccuracy'])
+            result.append(max_item)
+
+    write_data_csv(csv_file=CSV_OUT, rows=result)
+
+if __name__ == "__main__":
+    main()
